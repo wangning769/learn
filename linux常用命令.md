@@ -1,0 +1,485 @@
+### linux常用命令
+
+#### 简单命令
+
+​	显示日期：date
+
+​	显示日历：cal
+
+​	操作说明（manual）：man date
+
+​	关机操作：shutdown
+
+​	重启操作：reboot
+
+​	查看内核版本：uname -r
+
+​	显示当前目录：pwd
+
+​	切换目录：cd
+
+​	查看ip地址：ifconfig
+
+​	查看磁盘空间：df -h
+
+​	查看文件命令(推荐)：more/less
+
+​	查看文件最后: tail -n 5 file name
+
+​	查看文件命令(不推荐)：cat -n [文件名] 或者 nl [文件名]
+
+​	文件查找(寻找执行文件)：which ifconfig 或 which java
+
+​	查看文件：find / -name [文件命]
+
+​	解压命令：tar -zxvf [压缩文件名].tar.gz
+
+​	修改文件时间戳：touch
+
+​	打印变量：echo
+
+​	统计字数：wc
+
+​	显示进程：ps -aux|more
+
+​	杀死进程：kill
+
+```bash
+#1.杀进程命令，推荐方式 kill PID => kill - 15 PID
+kill PID
+#2.不推荐方式，因为直接杀死进程会导致一些数据丢失
+Kill -9 PID
+```
+
+| 信号编号 | 信号名 | 含义                                   |
+| -------- | ------ | -------------------------------------- |
+| 9        | KILL   | 杀死进程，即强制结束进程。             |
+| 15       | TERM   | 正常结束进程，是 kill 命令的默认信号。 |
+
+​	搜索输入文件：grep(常用)
+
+```bash
+#屏蔽含有grep关键行 |grep -v grep
+ps -ef|grep activemq|grep -v grep
+```
+
+​	比较文件不同：diff file1 file2
+
+​	删除文件指定字段：cut
+
+​	机器之间网络通信：ping
+
+​	网络情况和端口被占用：netstat -anop|grep xxx
+
+​	查询网卡：ifconfig
+
+​	主机名或DNS名称：hostname
+
+​	数据包的路由途径：traceroute www.baidu.com
+
+​	路由：route
+
+​	下载文件：wget
+
+​	进程，内存，页面调度，块IO，陷阱，磁盘和cpu活动的信息：vmstat -n 2 3
+
+​	可用物理内存和已用物理内存：free
+
+​	cpu进程列表：top
+
+​	端口命令：telnet
+
+#### 重要热键
+
+​	Tab：文件补齐
+
+​	Ctrl-c：中断命令
+
+#### vi/vim编辑器
+
++ 三种模式：一般模式、编辑模式、命令模式
+  + 一般模式:
+    + 向下翻一页：[Ctrl]+[f]  (常用)
+    + 向下翻半页：[Ctrl]+[d]
+    + 向上翻一页：[Ctrl]+[b] (常用)
+    + 向上翻半页：[Ctrl]+[u]
+    + 本行末尾：$ (常用)
+    + 本行开头：0 (常用)
+    + 光标移动到文件最后一行：G (常用)
+    + 光标移动到文件开头一行：gg (常用)
+    + 光标下移N行：N[Enter] (常用)
+    + 查找替换:/
+      + 查询关键字：/word (常用)
+      + 查询关键字下一个位置：n (常用)
+      + 查询关键字上一个位置：N (常用)
+      + 批量替换关键字:1,10 s/f/w/g (表示1-10行 s/将f/替换成w/g )
+    + 删除、复制、粘贴
+      + 删除光标所在那一行：dd (常用)
+      + 删除光标下n行：20dd （删除光标下20行）
+      + 复制光标所在的那一行：yy
+      + 复制光标所在的下n行：nyy
+      + 粘贴：p
+    +  撤销、复原
+      + 将光标下所在一行结合成同一行：J
+      + 撤销编辑：u
+      + 复原：[ctrl]+r
+  + 命令模式
+    + 保存：:w (:w! 强制操作)
+    + 退出：:w q( :q! 强制操作)
+    + 保存退出：wq! (强制操作)
+    + 显示行号：:set nu
+    + 隐藏行号：:set nonu
++ **块选择**
+  + 光标经过地方反白选择：V
+  + 长方形方式选择块：[Ctrl]+v
+  + 复制反白地方：y
+  + 粘贴反白地方：d
+
+---
+
+### Shell脚本
+
+第一个shell脚本
+
+```shell
+#!/bin/bash
+echo "Hello World !"
+```
+
+运行方法1(**作为可执行程序**)
+
+```shell
+chmod +x ./test.sh  #使脚本具有执行权限
+./test.sh  #执行脚本
+```
+
+运行方法2 (**作为解释器参数**)
+
+```shell
+/bin/sh test.sh
+/bin/php test.php
+```
+
+shell变量:
+
++ 系统变量:$PATH、$HOME、$USER
++ 用户自定义变量
+
+---
+
+### 日志查看
+
+日志都是G级别的，当然不能用vim打开去搜索，会把系统挂掉，vim是全部文档加载到内存。这时候就需要使用grep命令去根据一些关键信息匹配查找了。
+
+### top命令解释
+
+![image-20200510221646835](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200510221646835.png)
+
+```markdown
+第一行，任务队列信息，同 uptime 命令的执行结果，具体参数说明情况如下：
+
+	22:11:568 — 当前系统时间
+
+	up 3 days, 6:10 — 系统已经运行了3天6小时10分钟（在这期间系统没有重启过的）
+
+	1users — 当前有4个用户登录系统 4个？？？！！！
+
+	load average: 0.00, 0.02, 0.05 — load average后面的三个数分别是1分钟、5分钟、15分钟的负载情况。
+
+	load average数据是每隔5秒钟检查一次活跃的进程数，然后按特定算法计算出的数值。
+		如果这个数除以逻辑CPU的数量，结果高于5的时候就表明系统在超负荷运转了。
+
+第二行，Tasks — 任务（进程）
+
+	系统现在共有167个进程，其中处于运行中的有2个，166个在休眠（sleep），stoped状态的有0个，
+		zombie状态（僵尸）的有0个。
+
+第三行，cpu状态信息
+
+	%Cpu(s):  1.8 us,  6.4 sy,  0.0 ni, 91.7 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st
+
+	1.8 us — 用户空间占用CPU的百分比。
+
+	6.4 sy — 内核空间占用CPU的百分比。
+
+	0.0 ni — 改变过优先级的进程占用CPU的百分比
+
+	91.7 id — 空闲CPU百分比
+
+	0.0 wa — IO等待占用CPU的百分比
+
+	0.0 hi — 硬中断（Hardware IRQ）占用CPU的百分比
+
+	0.2 si — 软中断（Software Interrupts）占用CPU的百分比
+
+第四行,内存状态
+
+    945512 total  		物理内存总量
+
+    287356 free   		使用中的内存总量
+
+    658776 used   		空闲内存总量
+
+	158208 buff/cache  	缓存的内存量
+
+第五行，swap交换分区信息
+
+	102396 total   		交换区总量
+
+	0 	   used   		使用的交换区总量
+
+	102396 free   		空闲交换区总量
+
+	295596 cached Mem  	可用交换区总量
+
+第七行以下：各进程（任务）的状态监控
+
+	PID — 进程id
+
+	USER — 进程所有者
+
+	PR — 进程优先级
+
+	NI — nice值。负值表示高优先级，正值表示低优先级
+
+	VIRT — 进程使用的虚拟内存总量，单位kb。VIRT=SWAP+RES
+
+	RES — 进程使用的、未被换出的物理内存大小，单位kb。RES=CODE+DATA
+
+	SHR — 共享内存大小，单位kb
+
+	S — 进程状态。D=不可中断的睡眠状态 R=运行 S=睡眠 T=跟踪/停止 Z=僵尸进程
+
+	%CPU — 上次更新到现在的CPU时间占用百分比
+
+	%MEM — 进程使用的物理内存百分比
+
+	TIME+ — 进程使用的CPU时间总计，单位1/100秒
+
+	COMMAND — 进程名称（命令名/命令行）
+```
+
+### ifconfifg命令解释
+
+![image-20200510220537566](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200510220537566.png)
+
+eth0 表示第一块网卡， 其中 HWaddr 表示网卡的物理地址
+
+inet addr 用来表示网卡的IP地址
+
+lo 是表示主机的回坏地址，这个一般是用来测试一个网络程序，但又不想让局域网或外网的用户能够查看，只能在此台主机上运行和查看所用的网络接口。
+
+```makefile
+#无线网卡 wlan0
+第一行：连接类型：Ethernet（以太网）HWaddr（硬件mac地址）
+
+第二行：网卡的IP地址、子网、掩码
+
+第三行：UP（代表网卡开启状态）RUNNING（代表网卡的网线被接上）MULTICAST（支持组播）MTU:1500（最大传输单元）：1500字节
+
+第四、五行：接收、发送数据包情况统计
+
+第七行：接收、发送数据字节数统计信息。
+```
+
+### vmstat命令解释
+
+![image-20200510215227477](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200510215227477.png)
+
+```markdown
+解释
+Procs（进程）：
+	*r: 运行队列中进程数量
+	b: 等待IO的进程数量
+Memory（内存）：
+
+	swpd: 使用虚拟内存大小
+
+	free: 可用内存大小
+
+	buff: 用作缓冲的内存大小
+
+	cache: 用作缓存的内存大小
+
+Swap：
+
+	si: 每秒从交换区写到内存的大小
+
+	so: 每秒写入交换区的内存大小
+
+IO：（现在的Linux版本块的大小为1024bytes）
+
+	bi: 每秒读取的块数
+
+	bo: 每秒写入的块数
+
+System：
+
+	in: 每秒中断数，包括时钟中断。
+
+	cs: 每秒上下文切换数。
+
+CPU（以百分比表示）：
+
+	us: 用户进程执行时间(user time)
+	
+	*sy: 系统进程执行时间(system time)
+	
+	*id: 空闲时间(包括IO等待时间),中央处理器的空闲时间 。以百分比表示。
+
+	wa: 等待IO时间
+```
+
+### free命令解释
+
+![image-20200510221028160](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200510221028160.png)
+
+```markdown
+total:总计物理内存的大小。
+
+used:已使用多大。
+
+free:可用有多少。
+
+Shared:多个进程共享的内存总额。
+
+Buffers/cached:磁盘缓存的大小。
+
+第三行(-/+ buffers/cached):
+
+used:已使用多大。
+
+free:可用有多少。
+
+#上图实际为：使用199M,可以724M,而不是642和280
+当我们获取系统内存用量的时候我们应该以“-/+ buffers/cached”行的used和free作为参考.
+因为第一行的buffers和cached被系统作为了缓存(这里包括缓冲了metadata数据和曾经打开过的内容,
+是为了加快我们系统处理的速度)，而这部分缓存可以根据我们的应用内存使用情况随时释放掉(也可以手动释放).
+```
+
+### traceroute命令解释
+
+![image-20200510220932685](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200510220932685.png)
+
+```markdown
+记录按序列号从1开始，每行纪录就是一跳 ，每跳表示一个网关，我们看到每行有三个时间，单位是 ms，
+其实就是-q的默认参数。探测数据包向每个网关发送三个数据包后，网关响应后返回的时间；
+如果您用 traceroute -q 10 www.baidu.com，表示向每个网关发送10个数据包。
+
+有时我们traceroute 一台主机时，会看到有一些行是以星号表示的。出现这样的情况，
+可能是防火墙封掉了ICMP的返回信息，所以我们得不到什么相关的数据包返回数据。
+```
+
+
+
+
+
+iostat -xdk 2 3![image-20200421204413388](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\image-20200421204413388.png)
+
+
+
+### bash:ll命令未找到问题
+
+别名问题:
+
+​	第一步:vi ~/.bashrc
+
+​	第二步:添加别名alias ll='ls -l'
+
+​	第三步:执行source ~/.bashrc 命令
+
+
+
+### nohup和&的区别
+
+& ： 指在后台运行
+
+nohup ： 不挂断的运行，注意并没有后台运行的功能，，就是指，用nohup运行命令可以使命令永久的执行下去，和用户终端没有关系，例如我们断开SSH连接都不会影响他的运行，注意了nohup没有后台运行的意思；&才是后台运行
+
+&是指在后台运行，但当用户推出(挂起)的时候，命令自动也跟着退出
+
+那么，我们可以巧妙的吧他们结合起来用就是
+nohup COMMAND &
+这样就能使命令永久的在后台执行
+
+
+
+3.vim命令
+
+1. **多行复制**
+
+```ini
+任务：将第9行至第15行的数据，复制到第16行
+方法1：（强烈推荐）
+:9，15 copy 16  或 :9，15 co 16
+由此可有：
+:9，15 move 16  或 :9,15 m 16 将第9行到第15行的文本内容到第16行的后面  
+```
+
+### 删除命令
+
+1. 删除某个文件
+
+```ini
+#删除某个文件
+rm -rf
+#删除keep文件之外的所有文件
+rm -rf !(keep) 
+#删除keep1和keep2文件之外的所有文件
+rm -rf !(keep1 | keep2) 
+```
+
+---
+
+## 实际生产问题
+
+### CPU占满
+
+![image-20200613100440971](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\CPU占满问题.png)
+
+通过执行，`top -Hp 6282`查看java线程情况
+
+![image-20200613100515831](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\CPU占满问题2.png)
+
+执行 `printf '%x' 6282`获取16进制的线程id，用于`dump`信息查询，结果为 `188a`。最后我们执行`jstack 32805 |grep -A 20 188a`来查看下详细的`dump`信息。
+
+![image-20200613101301869](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\CPU占满问题3.png)
+
+**实际上我查日志是`188b`,不知道为什么**
+
+![image-20200613101149465](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\CPU占满问题4.png)
+
+这里`dump`信息直接定位出了问题方法以及代码行，这就定位出了CPU占满的问题。
+
+---
+
+### 内存泄露
+
++ **抛出异常**：
+
+> java.lang.OutOfMemoryError: Java heap space
+
+![image-20200613115004519](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏1.png)
+
++ **查看虚拟机GC情况**
+
+![image-20200613123231616](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏2.png)
+
++ 利用MAT工具打开
++ ![image-20200613124138084](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏4.png)
+
+![image-20200613123315459](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏3.png)
+
++ 查看引用
+
+![image-20200613124220428](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏5.png)
+
++ 查看指向GC Root，可以发现，目前的GC root是 `GC root:JNI Globa,Thread`,因此没被回收
++ ![image-20200613125327691](C:\Users\wangning\Desktop\面试题\二、github面试题\image\Linux常用命令\内存泄漏6.png)
+
+---
+
+### 死锁
+
+
+
