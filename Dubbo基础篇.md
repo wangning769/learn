@@ -1,3 +1,78 @@
+### 三、配置
+
+| 标签                   | 用途         | 解释                                                         |
+| ---------------------- | ------------ | ------------------------------------------------------------ |
+| `<dubbo:service/>`     | 服务配置     | 用于暴露一个服务，定义服务的元信息，一个服务可以用多个协议暴露，一个服务也可以注册到多个注册中心 |
+| `<dubbo:reference/>`   | 引用配置     | 用于创建一个远程服务代理，一个引用可以指向多个注册中心       |
+| `<dubbo:protocol/>`    | 协议配置     | 用于配置提供服务的协议信息，协议由提供方指定，消费方被动接受 |
+| `<dubbo:application/>` | 应用配置     | 用于配置当前应用信息，不管该应用是提供者还是消费者           |
+| `<dubbo:module/>`      | 模块配置     | 用于配置当前模块信息，可选                                   |
+| `<dubbo:registry/>`    | 注册中心配置 | 用于配置连接注册中心相关信息                                 |
+| `<dubbo:monitor/>`     | 监控中心配置 | 用于配置连接监控中心相关信息，可选                           |
+| `<dubbo:provider/>`    | 提供方配置   | 当 ProtocolConfig 和 ServiceConfig 某属性没有配置时，采用此缺省值，可选 |
+| `<dubbo:consumer/>`    | 消费方配置   | 当 ReferenceConfig 某属性没有配置时，采用此缺省值，可选      |
+| `<dubbo:method/>`      | 方法配置     | 用于 ServiceConfig 和 ReferenceConfig 指定方法级的配置信息   |
+| `<dubbo:argument/>`    | 参数配置     | 用于指定方法参数配置                                         |
+
+#### 不同粒度配置的覆盖关系
+
+以 timeout 为例，下图显示了配置的查找顺序，其它 retries, loadbalance, actives 等类似：
+
+- 方法级优先，接口级次之，全局配置再次之。
+- 如果级别一样，则消费方优先，提供方次之。
+
+其中，服务提供方配置，通过 URL 经由注册中心传递给消费方。
+
+![dubbo-config-override](F:\GitHub\learn\image\Dubbo基础\dubbo-config-override.jpg)
+
+建议由服务提供方设置超时，因为一个方法需要执行多长时间，服务提供方更清楚，如果一个消费方同时引用多个服务，就不需要关心每个服务的超时设置
+
+理论上 ReferenceConfig 中除了`interface`这一项，其他所有配置项都可以缺省不配置，框架会自动使用ConsumerConfig，ServiceConfig, ProviderConfig等提供的缺省配置。
+
+#### xml配置
+
+##### provider.xml实例
+
+```xml
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
+    <dubbo:application name="demo-provider"/>
+    <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
+    <dubbo:protocol name="dubbo" port="20890"/>
+    <bean id="demoService" class="org.apache.dubbo.samples.basic.impl.DemoServiceImpl"/>
+    <dubbo:service interface="org.apache.dubbo.samples.basic.api.DemoService" ref="demoService"/>
+</beans>
+```
+
+##### consumer.xml示例
+
+```xml
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
+    <dubbo:application name="demo-consumer"/>
+    <dubbo:registry group="aaa" address="zookeeper://127.0.0.1:2181"/>
+    <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.samples.basic.api.DemoService"/>
+</beans>
+```
+
+### 属性配置
+
+如果你的应用足够简单，例如，不需要多注册中心或多协议，并且需要在spring容器中共享配置，那么，我们可以直接使用 `dubbo.properties`作为默认配置。
+
+Dubbo可以自动加载classpath根目录下的dubbo.properties，但是你同样可以使用JVM参数来指定路径：`-Ddubbo.properties.file=xxx.properties`。
+
+##### 重写与优先级
+
+![properties-override](F:\GitHub\learn\image\Dubbo基础\dubbo-properties-override.jpg)
+
+
+
 ### 四、Dubbo协议
 
 + dubbo原有9大协议，但在2.7.5 版本新增了gRPC协议。总共**10**大协议。
@@ -198,7 +273,72 @@ Spring 兼容性：
 
 #### 3.hessian://
 
+Hessian 协议用于集成 Hessian 的服务，Hessian 底层采用 Http 通讯，采用 Servlet 暴露服务，Dubbo 缺省内嵌 Jetty 作为服务器实现。
 
+Dubbo 的 Hessian 协议可以和原生 Hessian 服务互操作，即：
+
+- 提供者用 Dubbo 的 Hessian 协议暴露服务，消费者直接用标准 Hessian 接口调用
+- 或者提供方用标准 Hessian 暴露服务，消费方用 Dubbo 的 Hessian 协议调用。
+
+##### 特性
+
+- 连接个数：多连接
+- 连接方式：短连接
+- 传输协议：HTTP
+- 传输方式：同步传输
+- 序列化：Hessian二进制序列化
+- 适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。
+- 适用场景：页面传输，文件传输，或与原生hessian服务互操作
+
+##### 依赖
+
+```xml
+<dependency>
+    <groupId>com.caucho</groupId>
+    <artifactId>hessian</artifactId>
+    <version>4.0.7</version>
+</dependency>
+```
+
+##### 约束
+
+- 参数及返回值需实现 `Serializable` 接口
+- 参数及返回值不能自定义实现 `List`, `Map`, `Number`, `Date`, `Calendar` 等接口，只能用 JDK 自带的实现，因为 hessian 会做特殊处理，自定义实现类中的属性值都会丢失。
+
+##### 配置
+
+定义 hessian 协议：
+
+```xml
+<dubbo:protocol name="hessian" port="8080" server="jetty" />
+```
+
+设置默认协议：
+
+```xml
+<dubbo:provider protocol="hessian" />
+```
+
+设置 service 协议：
+
+```xml
+<dubbo:service protocol="hessian" />
+```
+
+多端口：
+
+```xml
+<dubbo:protocol id="hessian1" name="hessian" port="8080" />
+<dubbo:protocol id="hessian2" name="hessian" port="8081" />
+```
+
+直连：
+
+```xml
+<dubbo:reference id="helloService" interface="HelloWorld" url="hessian://10.20.153.10:8080/helloWorld
+```
+
+---
 
 #### 4.http://
 
@@ -373,3 +513,252 @@ Servlet Bridge Server (推荐)：
 ---
 
 #### 6.thrift://
+
+当前 dubbo 支持 [[1\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/thrift.html#fn1)的 thrift 协议是对 thrift 原生协议 [[2\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/thrift.html#fn2) 的扩展，在原生协议的基础上添加了一些额外的头信息，比如 service name，magic number 等。
+
+使用 dubbo thrift 协议同样需要使用 thrift 的 idl compiler 编译生成相应的 java 代码，后续版本中会在这方面做一些增强。
+
+##### 依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.thrift</groupId>
+    <artifactId>libthrift</artifactId>
+    <version>0.8.0</version>
+</dependency>
+```
+
+##### 配置
+
+所有服务共用一个端口 [[3\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/thrift.html#fn3)：
+
+```xml
+<dubbo:protocol name="thrift" port="3030" />
+```
+
+##### 使用
+
+可以参考 [dubbo 项目中的示例代码](https://github.com/apache/dubbo/tree/master/dubbo-rpc/dubbo-rpc-thrift/src/test/java/org/apache/dubbo/rpc/protocol/thrift)
+
+##### 常见问题
+
+- Thrift 不支持 null 值，即：不能在协议中传递 null 值
+
+---
+
+#### 7.memcached://
+
++ 基于 memcached [[1\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/memcached.html#fn1) 实现的 RPC 协议
+
+##### 注册 memcached 服务的地址
+
+```java
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("memcached://10.20.153.11/com.foo.BarService?category=providers&dynamic=false&application=foo&group=member&loadbalance=consistenthash"));
+```
+
+##### 在客户端引用
+
+在客户端使用 [[3\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/memcached.html#fn3)：
+
+```xml
+<dubbo:reference id="cache" interface="java.util.Map" group="member" />
+```
+
+或者，点对点直连：
+
+```xml
+<dubbo:reference id="cache" interface="java.util.Map" url="memcached://10.20.153.10:11211" />
+```
+
+也可以使用自定义接口：
+
+```xml
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="memcached://10.20.153.10:11211" />
+```
+
+方法名建议和 memcached 的标准方法名相同，即：get(key), set(key, value), delete(key)。
+
+如果方法名和 memcached 的标准方法名不相同，则需要配置映射关系 [[4\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/memcached.html#fn4)：
+
+```xml
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="memcached://10.20.153.10:11211" p:set="putFoo" p:get="getFoo" p:delete="removeFoo" />
+```
+
+------
+
+1. [Memcached](http://memcached.org/) 是一个高效的 KV 缓存服务器 [↩︎](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/memcached.html#fnref1)
+
+---
+
+#### 8.redis://
+
+基于 Redis [[1\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/redis.html#fn1) 实现的 RPC 协议 [[2\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/redis.html#fn2)。
+
+##### 注册 redis 服务的地址
+
+```java
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("redis://10.20.153.11/com.foo.BarService?category=providers&dynamic=false&application=foo&group=member&loadbalance=consistenthash"));
+```
+
+##### 在客户端引用
+
+在客户端使用 ：
+
+```xml
+<dubbo:reference id="store" interface="java.util.Map" group="member" />
+```
+
+或者，点对点直连：
+
+```xml
+<dubbo:reference id="store" interface="java.util.Map" url="redis://10.20.153.10:6379" />
+```
+
+也可以使用自定义接口：
+
+```xml
+<dubbo:reference id="store" interface="com.foo.StoreService" url="redis://10.20.153.10:6379" />
+```
+
+方法名建议和 redis 的标准方法名相同，即：get(key), set(key, value), delete(key)。
+
+如果方法名和 redis 的标准方法名不相同，则需要配置映射关系 [[4\]](http://dubbo.apache.org/zh-cn/docs/user/references/protocol/redis.html#fn4)：
+
+```xml
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="redis://10.20.153.10:6379" p:set="putFoo" p:get="getFoo" p:delete="removeFoo" />
+```
+
+---
+
+#### 9.rest://
+
+
+
+---
+
+#### 10.grpc://
+
+Dubbo 自 2.7.5 版本开始支持 gRPC 协议，对于计划使用 HTTP/2 通信，或者想利用 gRPC 带来的 Stream、反压、Reactive 编程等能力的开发者来说， 都可以考虑启用 gRPC 协议。
+
+##### 支持 gRPC 的好处
+
+- 为期望使用 gRPC 协议的用户带来服务治理能力，方便接入 Dubbo 体系
+- 用户可以使用 Dubbo 风格的，基于接口的编程风格来定义和使用远程服务
+
+##### 如何在 Dubbo 中使用 gRPC
+
+大概需要以下步骤：
+
+1. 使用 IDL 定义服务
+2. 配置 compiler 插件，本地预编译
+3. 配置暴露/引用 Dubbo 服务
+
+---
+
+### 五、注册中心
+
+#### 1.zookeeper注册中心
+
+![/user-guide/images/zookeeper.jpg](F:\GitHub\learn\image\Dubbo基础\zookeeper.jpg)
+
+流程说明：
+
+- 服务提供者启动时: 向 `/dubbo/com.foo.BarService/providers` 目录下写入自己的 URL 地址
+- 服务消费者启动时: 订阅 `/dubbo/com.foo.BarService/providers` 目录下的提供者 URL 地址。并向 `/dubbo/com.foo.BarService/consumers` 目录下写入自己的 URL 地址
+- 监控中心启动时: 订阅 `/dubbo/com.foo.BarService` 目录下的所有提供者和消费者 URL 地址。
+
+支持以下功能：
+
+- 当提供者出现断电等异常停机时，注册中心能自动删除提供者信息
+- 当注册中心重启时，能自动恢复注册数据，以及订阅请求
+- 当会话过期时，能自动恢复注册数据，以及订阅请求
+- 当设置 `<dubbo:registry check="false" />` 时，记录失败注册和订阅请求，后台定时重试
+- 可通过 `<dubbo:registry username="admin" password="1234" />` 设置 zookeeper 登录信息
+- 可通过 `<dubbo:registry group="dubbo" />` 设置 zookeeper 的根节点，不配置将使用默认的根节点。
+- 支持 `*` 号通配符 `<dubbo:reference group="*" version="*" />`，可订阅服务的所有分组和所有版本的提供者
+
+#### 依赖
+
+```xml
+<dependency>
+    <groupId>com.github.sgroschupf</groupId>
+    <artifactId>zkclient</artifactId>
+    <version>0.1</version>
+</dependency>
+```
+
+Zookeeper 单机配置:
+
+```xml
+<dubbo:registry address="zookeeper://10.20.153.10:2181" />
+```
+
+或：
+
+```xml
+<dubbo:registry protocol="zookeeper" address="10.20.153.10:2181" />
+```
+
+Zookeeper 集群配置：
+
+```xml
+<dubbo:registry address="zookeeper://10.20.153.10:2181?backup=10.20.153.11:2181,10.20.153.12:2181" />
+```
+
+或：
+
+```xml
+<dubbo:registry protocol="zookeeper" address="10.20.153.10:2181,10.20.153.11:2181,10.20.153.12:2181" />
+```
+
+同一 Zookeeper，分成多组注册中心:
+
+```xml
+<dubbo:registry id="chinaRegistry" protocol="zookeeper" address="10.20.153.10:2181" group="china" />
+<dubbo:registry id="intlRegistry" protocol="zookeeper" address="10.20.153.10:2181" group="intl" />
+```
+
+---
+
+### 六、负载均衡
+
++ LoadBalance 中文意思为负载均衡，他的职责是将网络请求或者其他形式的负载“均摊”到不同的机器上，避免其群众部分服务器压力过大，而另一些服务器比较空闲的情况。通过负载均衡，可以让每台服务器获取到适合自己处理能力的负载。在为高负载分流的同时，还可以避免资源浪费。一举两得。
++ dubbo提供了4种负载均衡实现，其做法都是继承自**AbstractLoadBalance**，该类实现了**LoadBalance**接口
+  + 基于权重随机算法的 ：**RandomLoadBalance**
+  + 基于最少活跃调用数算法的：**LeastActiveLoadBalance**
+  + 基于Hash一致性的：**ConsistentHashLoadBalance**
+  + 基于加权轮询算法的 ：**RoundRobinLoadBalance**
+
+#### RandomLoadBalance
+
++ RandomLoadBalance 是加权随机算法的具体实现，它的算法思想很简单。假设我们有一组服务器 servers = [A, B, C]，他们对应的权重为 weights = [5, 3, 2]，权重总和为10。现在把这些权重值平铺在一维坐标值上，[0, 5) 区间属于服务器 A，[5, 8) 区间属于服务器 B，[8, 10) 区间属于服务器 C。比如，经过一万次选择后，服务器 A 被选中的次数大约为5000次，服务器 B 被选中的次数约为3000次，服务器 C 被选中的次数约为2000次。
+
+####  LeastActiveLoadBalance
+
++   LeastActiveLoadBalance 翻译过来是最小活跃数负载均衡。活跃调用数越小，表明该服务提供者效率越高，单位时间内可处理更多的请求。此时应优先将请求分配给该服务提供者。在具体实现中，每个服务提供者对应一个活跃数 active。初始情况下，所有服务提供者活跃数均为0。每收到一个请求，活跃数加1，完成请求后则将活跃数减1。在服务运行一段时间后，性能好的服务提供者处理请求的速度更快，因此活跃数下降的也越快，此时这样的服务提供者能够优先获取到新的服务请求、这就是最小活跃数负载均衡算法的基本思想。
+
+#### ConsistentHashLoadBalance
+
+一致性 hash 算法由麻省理工学院的 Karger 及其合作者于1997年提出的，算法提出之初是用于大规模缓存系统的负载均衡。它的工作过程是这样的，首先根据 ip 或者其他的信息为缓存节点生成一个 hash，并将这个 hash 投射到 [0, 232 - 1] 的圆环上。当有查询或写入请求时，则为缓存项的 key 生成一个 hash 值。然后查找第一个大于或等于该 hash 值的缓存节点，并到这个节点中查询或写入缓存项。如果当前节点挂了，则在下一次查询或写入缓存时，为缓存项查找另一个大于其 hash 值的缓存节点即可。大致效果如下图所示，每个缓存节点在圆环上占据一个位置。如果缓存项的 key 的 hash 值小于缓存节点 hash 值，则到该缓存节点中存储或读取缓存项。比如下面绿色点对应的缓存项将会被存储到 cache-2 节点中。由于 cache-3 挂了，原本应该存到该节点中的缓存项最终会存储到 cache-4 节点中。
+
+![img](F:\GitHub\learn\image\Dubbo基础\consistent-hash.jpg)
+
+下面来看看一致性 hash 在 Dubbo 中的应用。我们把上图的缓存节点替换成 Dubbo 的服务提供者，于是得到了下图：
+
+![img](F:\GitHub\learn\image\Dubbo基础\consistent-hash-invoker.jpg)
+
+这里相同颜色的节点均属于同一个服务提供者，比如 Invoker1-1，Invoker1-2，……, Invoker1-160。这样做的目的是通过引入虚拟节点，让 Invoker 在圆环上分散开来，避免数据倾斜问题。所谓数据倾斜是指，由于节点不够分散，导致大量请求落到了同一个节点上，而其他节点只会接收到了少量请求的情况。比如：
+
+![img](F:\GitHub\learn\image\Dubbo基础\consistent-hash-data-incline.jpg)
+
+如上，由于 Invoker-1 和 Invoker-2 在圆环上分布不均，导致系统中75%的请求都会落到 Invoker-1 上，只有 25% 的请求会落到 Invoker-2 上。解决这个问题办法是引入虚拟节点，通过虚拟节点均衡各个节点的请求量。
+
+---
+
+#### RoundRobinLoadBalance
+
++ 所谓轮询是指将请求轮流分配给每台服务器。举个例子，我们有三台服务器 A、B、C。我们将第一个请求分配给服务器 A，第二个请求分配给服务器 B，第三个请求分配给服务器 C，第四个请求再次分配给服务器 A。这个过程就叫做轮询。轮询是一种无状态负载均衡算法，实现简单，适用于每台服务器性能相近的场景下。但现实情况下，我们并不能保证每台服务器性能均相近。如果我们将等量的请求分配给性能较差的服务器，这显然是不合理的。因此，这个时候我们需要对轮询过程进行加权，以调控每台服务器的负载。经过加权后，每台服务器能够得到的请求数比例，接近或等于他们的权重比。比如服务器 A、B、C 权重比为 5:2:1。那么在8次请求中，服务器 A 将收到其中的5次请求，服务器 B 会收到其中的2次请求，服务器 C 则收到其中的1次请求。
