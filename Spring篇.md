@@ -112,7 +112,9 @@ class BookServlet{
 
 > `@Component`:告诉Spring会为这个类创建Bean
 >
-> `@ComponentScan`：扫描包和所有子包，查找带有`@Component`注解的类
+> `@ComponentScan`:扫描包和所有子包，查找带有`@Component`注解的类
+>
+> `@ComponentScans`:该注解的value是包涵很多`@ComponentScan`的，意味着外面可以多定义几个`@ComponentScan`加入到value中
 >
 > `@ContextConfiguration`:加载配置位置，一般为被`@ComponentScan`修饰的`XXXConfig.class`
 >
@@ -120,27 +122,58 @@ class BookServlet{
 >
 > > 可以通过`required=false`,不装配，但可能会报**空指针**，所以慎用
 >
+> `@Primary`:让Spring进行自动装配的时候，默认使用**首选的Bean**
+>
+> `@Resource`:Java规范的注解
+>
 > `@Configuration`:表示该类是一个配置类，该类应该包含在Spring应用上下文中如何创建Bean的细节。
 >
 > `@Bean`:用于显示的装配Bean,告诉Spring，将该Bean注册到Spring的上下文中的bean中
 >
-> `@import`:如果一个Config里的配置Bean过于笨重，则可以对其进行拆分，并通过该注解引入进来
+> `@import`:如果一个Config里的配置Bean过于笨重，则可以对其进行拆分，并通过该注解引入进来,id默认是全类名
 >
 > `@ImportResource`:又或者你需要引入的**配置在XML**文件中，因此就需要该标签进行引入
 >
 > > `@ImportResource("'classpath:cd-config.xml")`
 >
-> `@Profile`:激活环境
+> `@Profile`:激活环境，只有某个环境被激活的时候，才能注册到容器中，默认可以使用`@Profile("default")`
 >
-> `@Scope`:选择bean的作用域
+> > 开发：`@Profile("dev")`、 测试：`@Profile("test")` 、生产：`@Profile("prod")`
+> >
+> > 激活方式：
+> >
+> > > 1.命令行方式：-Dspring.profiles.active=test
+> > >
+> > > 2.代码方式激活:AnnotationConfigApplicationContext无参构造方法
+>
+> `@Scope`:选择bean的作用域，可以指定多实例和单实例，默认**单实例**，常用取值
+>
+> > **SCOPE_PROTOTYPE**：**多实例，每次获取的时候创建对象**
+> >
+> > **SCOPE_SINGLETON**：**单实例，启动就会创建对象**
+>
+> `@Lazy`:懒加载，**容器初始化时不创建，当第一次获取时会创建**
 >
 > `@PropertySource`:用于注入外部的值
+>
+> `@Qualifier`:当一个接口有**多个实现类**都已经注册到spring容器中，此时需要使用该注解执行使用实现类。因此`@Qualifier`是byName的
 
 #### 显示的方式装配Bean
 
 + 当一个类没有被`@Compontent`修饰，就没有办法用`@Autowired`进行注入，那么我们就需要**显示的装配Bean**
 
 + 当一个方法被`@Bean`修饰时，Spring会拦截所有调用方法，实际只返回Spring所创建的bean，也就是Spring本身调用`sgtPeppers()`时所创建的bean
+
++ **给容器中注册组件：**
+
+  1. 包扫描+组件标注注解（@Controller,@Service,@Component等）
+  2. `@Bean`:[导入第三方包里面的组件]
+  3. `@Import`:
+     1. `import`直接导入组件,默认是组件的全类名
+     2. 通过实现`ImportSelect`接口:返回需要导入组件的全类名，该接口方法返回全类名
+     3. ImportBeanDefinitionRegistrar:手动注册bean到容器中去
+  4. 使用Spring提供的FactoryBean（工厂Bean）
+     1. 获取工厂Bean本身，需要加 `&`
 
 + 具体方式
 
@@ -181,7 +214,10 @@ class BookServlet{
 + 当需要一个或多个bean只有在应用的类路径下包含特定的库是才创建，或者希望某个bean只有当另外某个特定的bean也声明了之后才创建
 + 需要实现`Condition`接口并实现`matches()`方法
 
-> `@Conditional`：用于条件化初始化bean
+> `@Conditional`：用于条件化初始化bean，
+>
+> + 在方法上：条件成立，方法注册的bean才会生效
+>  + 放在类上：条件成立，类中所有注册的bean才会生效
 >
 > `@ConditionalOnBean`：配置了某个特定Bean
 >
@@ -206,7 +242,7 @@ class BookServlet{
  * 但后者是常量更加安全不易出错
  * 	@Scope(scopeName = WebApplicationContext.SCOPE_REQUEST,proxyMode = ScopedProxyMode.INTERFACES)
  */
-@Scope("prototype") // 单例
+@Scope("prototype") // 多例
 public Person1 createBean() {
     Person1 p = new Person1("admin");
     return p;
@@ -377,7 +413,8 @@ public class Aduience {
 }
 ```
 
-+ 目前切面还不会生效，注解还不会被解析，也不会创建将其转换为切面的代理。（**注解方式启动**），使用`@EnableAspectJAutoProxy`注解
++ 目前切面还不会生效，注解还不会被解析，也不会创建将其转换为切面的代理。（**注解方式启动**），使用
++ **`@EnableAspectJAutoProxy`注解**
 
 ```java
 @Configuration
@@ -554,6 +591,15 @@ public class Aduience2 {
 
 ---
 
+#### AOP原理
+
++ **看容器中注册了什么组件，这个组件什么时候工作，这个组件的功能是什么**
+
++ 从`@EnableAspectJAutoProxy`开始分析
+  + `AspectJAutoProxyRegistrar` 注册：`AnnotationAwareAspectJAutoProxyCreator.class`
+
+---
+
 ### 第三章Spring Web
 
 ![](F:\GitHub\learn\image\Spring篇\SpringMVC.png)
@@ -570,21 +616,204 @@ public class Aduience2 {
 
 + `AbstractAnnotationConfigDispatcherServletInitializer`是对传统`web.xml`的替代方案，只支持Servlet3.0以后的规范。
 
-使用注解
+#### 常用注解
 
-+ `@EnableWebMvc：启动Spring MVC
+> `@EnableWebMvc`：启动Spring MVC
+>
+> `@Controller`： 用于标记在一个类上，Controller标记的类就是一个控制器，这个类中的方法，就是相应的动作。
+>
+> `@ControllerAdvice`：Controller的增强，常用于
+>
+> > **全局异常处理 、全局数据绑定、全局数据预处理**
+>
+> `@ExceptionHandler`：作用主要在于声明一个或多个类型的异常，当符合条件的Controller抛出这些异常之后将会对这些异常进行捕获，然后按照其标注的方法的逻辑进行处理，从而改变返回的视图信息。
 
+#### 静态资源存放位置位置
 
+```
+"classpath:/META-INF/resources/"
+"classpath:/resources/"
+"classpath:/static/"
+"classpath:/public/"
+"/"
+```
 
+#### 模板引擎
 
+##### thymeleaf
+
++ 导入`spring-boot-starter-thymeleaf`包
+  + 导入thymeleaf语法 `<html xmlns:th="http://www.thymeleaf.org">`
++ 语法规则，其优势在于，**任意属性可以以替换原生属性，只要能取到值，否则按原有属性处理**
+
+> th:text：修改当前元素里面的文本内容
+>
+> `id="app"` <=> `th:id="{app}"` 或 `class="hello"` <=> `th:class="{hello}"`
+
+| 关键字      | 功能介绍                                     | 案例                                                         |
+| :---------- | :------------------------------------------- | :----------------------------------------------------------- |
+| th:id       | 替换id                                       | `<input th:id="'xxx' + ${collect.id}"/>`                     |
+| th:text     | 文本替换                                     | `<p th:text="${collect.description}">description</p>`        |
+| th:utext    | 支持html的文本替换                           | `<p th:utext="${htmlcontent}">conten</p>`                    |
+| th:object   | 替换对象                                     | `<div th:object="${session.user}">`                          |
+| th:value    | 属性赋值                                     | `<input th:value="${user.name}" />`                          |
+| th:with     | 变量赋值运算                                 | `<div th:with="isEven=${prodStat.count}%2==0"></div>`        |
+| th:style    | 设置样式                                     | `th:style="'display:' + @{(${sitrue} ? 'none' : 'inline-block')} + ''"` |
+| th:onclick  | 点击事件                                     | `th:onclick="'getCollect()'"`                                |
+| th:each     | 属性赋值                                     | `tr th:each="user,userStat:${users}">`                       |
+| th:if       | 判断条件                                     | `<a th:if="${userId == collect.userId}" >`                   |
+| th:unless   | 和th:if判断相反                              | `<a th:href="@{/login}" th:unless=${session.user != null}>Login</a>` |
+| th:href     | 链接地址                                     | `<a th:href="@{/login}" th:unless=${session.user != null}>Login</a> />` |
+| th:switch   | 多路选择 配合th:case 使用                    | `<div th:switch="${user.role}">`                             |
+| th:case     | th:switch的一个分支                          | `<p th:case="'admin'">User is an administrator</p>`          |
+| th:fragment | 布局标签，定义一个代码片段，方便其它地方引用 | `<div th:fragment="alert">`                                  |
+| th:include  | 布局标签，替换内容到引入的文件               | `<head th:include="layout :: htmlhead" th:with="title='xx'"></head> />` |
+| th:replace  | 布局标签，替换整个标签到引入的文件           | `<div th:replace="fragments/header :: title"></div>`         |
+| th:selected | selected选择框 选中                          | `th:selected="(${xxx.id} == ${configObj.dd})"`               |
+| th:src      | 图片类地址引入                               | `<img class="img-responsive" alt="App Logo" th:src="@{/img/logo.png}" />` |
+| th:inline   | 定义js脚本可以使用变量                       | `<script type="text/javascript" th:inline="javascript">`     |
+| th:action   | 表单提交的地址                               | `<form action="subscribe.html" th:action="@{/subscribe}">`   |
+| th:remove   | 删除某个属性                                 | `<tr th:remove="all"> 1.all:删除包含标签和所有的孩子。2.body:不包含标记删除,但删除其所有的孩子。3.tag:包含标记的删除,但不删除它的孩子。4.all-but-first:删除所有包含标签的孩子,除了第一个。5.none:什么也不做。这个值是有用的动态评估。` |
+| th:attr     | 设置标签属性，多个属性可以用逗号分隔         | 比如 `th:attr="src=@{/image/aa.jpg},title=#{logo}"`，此标签不太优雅，一般用的比较少。 |
+
++ 表达式功能
+
+```java
+${person.father.name}
+
+${person['father']['name']}
+
+${countriesByCode.ES}
+${personsByName['Stephen Zucchini'].age}
+
+${personsArray[0].name}
+
+${person.createCompleteName()}
+${person.createCompleteNameWithSeparator('-')}
+```
+
+###### 内置基本对象
+
+- `#ctx`: the context object.
+- `#vars:` the context variables.
+- `#locale`: the context locale.
+- `#request`: (only in Web Contexts) the `HttpServletRequest` object.
+- `#response`: (only in Web Contexts) the `HttpServletResponse` object.
+- `#session`: (only in Web Contexts) the `HttpSession` object.
+- `#servletContext`: (only in Web Contexts) the `ServletContext` object.
+
+###### 内置工具对象
+
+- `#execInfo`: information about the template being processed.
+- `#messages`: methods for obtaining externalized messages inside variables expressions, in the same way as they would be obtained using #{…} syntax.
+- `#uris`: methods for escaping parts of URLs/URIs
+- `#conversions`: methods for executing the configured *conversion service* (if any).
+- `#dates`: methods for `java.util.Date` objects: formatting, component extraction, etc.
+- `#calendars`: analogous to `#dates`, but for `java.util.Calendar` objects.
+- `#numbers`: methods for formatting numeric objects.
+- `#strings`: methods for `String` objects: contains, startsWith, prepending/appending, etc.
+- `#objects`: methods for objects in general.
+- `#bools`: methods for boolean evaluation.
+- `#arrays`: methods for arrays.
+- `#lists`: methods for lists.
+- `#sets`: methods for sets.
+- `#maps`: methods for maps.
+- `#aggregates`: methods for creating aggregates on arrays or collections.
+
+---
 
 ### 第四章Spring JDBC
 
 + 
 
+---
 
+### 第五章Spring 缓存
 
+#### **Cache接口**
 
++ 缓存接口，定义缓存操作。
++ Cache接口下Spring提供了各种xxxCache的实现,如RedisCache,EhCacheCache , ConcurrentMapCache等;
++ 每次调用需要缓存功能的方法时，Spring会检查检查指定参数的指定的目标方法是否已经被调用过；如果有就直接从缓存中获取方法调用后的结果，如果没有就调用方法并缓存结果返回给用户。下次直接从缓存中获取。
+
+#### 关注点
+
++ **1.确定方法需要被缓存以及他们的缓存策略**
++ **2.从缓存中读取之前缓存存储的数据**
+
+#### 常用注解
+
+> `@Cacheable`：主要针对方法配置，能够根据方法大请求参数对其结果进行缓存
+>
+> `@CacheEvict`：清空缓存
+>
+> `@CachePut`：在方法的调用前不会检查缓存，保证方法被调用，又希望结果被缓存
+>
+> `@EnableCaching`：开启基于注解的缓存
+
+#### 引入POM.xml
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+```
+
+#### 启用缓存
+
++ **采用注解式缓存**
+
+```java
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableCaching // 启用缓存
+public class CachingConfig {
+    @Bean
+    public CacheManager cacheManager() {
+        // 声明缓存管理器
+        return new ConcurrentMapCacheManager();
+    }
+}
+```
+
++ **采用XML声明式缓存**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:cache="http://www.springframework.org/schema/cache"
+   xsi:schemaLocation="http://www.springframework.org/schema/beans
+     http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+     http://www.springframework.org/schema/cache
+     http://www.springframework.org/schema/cache/spring-cache.xsd">
+  
+   <!-- 开始缓存 -->
+   <cache:annotation-driven/>
+   <!-- 声明缓存管理器 -->
+   <bean id="cacheManager" class="org.springframework.cache.concurrent.ConcurrentMapCacheManager"/>
+</beans>
+```
+
+#### 缓存管理器（cache manager）
+
++ Spring提供了内置缓存管理器的实现
+  + **ConcurrentMapCacheManager**
+  + **SimpleCacheManager**
+  + **NoOpCacheManager**
+  + **CompositeCacheManager**
+  + **EhCacheCacheManager**
++ 基于JCache(JSR-107)的提供商
+  + **RedisCacheManager(来源于Spring Data Redis项目)**
+  + **GemfireCacheManager(来源于Spring Data GemFire项目)**
+
+---
 
 ### 第十章SpringBoot
 
@@ -686,7 +915,7 @@ public class HelloController {
 >> public @interface EnableAutoConfiguration {
 >> ```
 >
->`@ConfigurationProperties`：加载配置文件
+>`@ConfigurationProperties`：加载配置文件,可以指定前缀（prefix）
 >
 >`@Value`：从配置文件里注入值
 >
